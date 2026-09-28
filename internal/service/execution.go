@@ -209,7 +209,7 @@ func (runtime *Runtime) switchInkOperation(withFault bool) error {
 	if withFault {
 		circuit := ink.NewCircuit(runtime.ink)
 		circuit.FailDrain(active, fmt.Errorf("drain isolation signal failed"))
-		runtime.RecordIncident("warning", "ink", "drain isolation signal failed")
+		runtime.RecordIncident(SeverityCritical, "ink", "drain isolation signal failed")
 		return nil
 	}
 	next := "magenta"

@@ -31,6 +31,9 @@ func (runtime *Runtime) CreateOperation(ctx context.Context, kind string) (Opera
 	if !ok {
 		return Operation{}, fmt.Errorf("there is no active job")
 	}
+	if blocked := runtime.BlockingIncidents(kind); len(blocked) > 0 {
+		return Operation{}, fmt.Errorf("operation %q is blocked by %d unreset critical incident(s), first: %s (%s)", kind, len(blocked), blocked[0].Message, blocked[0].ID)
+	}
 	if err := runtime.ExecuteOperation(ctx, kind); err != nil {
 		return Operation{}, err
 	}
