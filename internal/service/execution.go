@@ -42,6 +42,9 @@ func (runtime *Runtime) ExecuteOperation(ctx context.Context, kind string) error
 		return ctx.Err()
 	default:
 	}
+	if incident, blocked := runtime.BlockingIncident(kind); blocked {
+		return fmt.Errorf("operation %q is blocked by unresolved critical incident %s on %s: %s", kind, incident.ID, incident.Component, incident.Message)
+	}
 	switch kind {
 	case "load_roll":
 		return runtime.loadRollOperation(current)
@@ -209,7 +212,9 @@ func (runtime *Runtime) switchInkOperation(withFault bool) error {
 	if withFault {
 		circuit := ink.NewCircuit(runtime.ink)
 		circuit.FailDrain(active, fmt.Errorf("drain isolation signal failed"))
-		runtime.RecordIncident("warning", "ink", "drain isolation signal failed")
+		if _, err := runtime.RecordIncident(SeverityCritical, "ink", "drain isolation signal failed"); err != nil {
+			return err
+		}
 		return nil
 	}
 	next := "magenta"
@@ -345,7 +350,9 @@ func (runtime *Runtime) diagnosticsOperation(ctx context.Context, current model.
 		return fmt.Errorf("command registry is incomplete")
 	}
 	if runtime.registerControl.LastError() != nil {
-		runtime.RecordIncident("error", "register", runtime.registerControl.LastError().Error())
+		if _, err := runtime.RecordIncident(SeverityCritical, "register", runtime.registerControl.LastError().Error()); err != nil {
+			return err
+		}
 	}
 	if runtime.unwind.StopFeed(string(current.ID)) {
 		return runtime.feedWebOperation(ctx, current)
